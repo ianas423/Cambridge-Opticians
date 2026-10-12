@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cambridge Opticians - Enterprise Optical Management System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            800: '#0c4a6e',
+                            900: '#0f172a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Printable Thermal Receipt Styling */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-receipt, #printable-receipt * {
+                visibility: visible;
+            }
+            #printable-receipt {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 80mm;
+                padding: 10px;
+                font-family: 'JetBrains Mono', monospace;
+            }
+        }
+    </style>
+</head>
+<body class="h-full font-sans antialiased text-slate-800 flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-full md:w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col border-r border-slate-800">
+        <!-- Brand Header -->
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-sky-500 to-blue-700 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-sky-500/20">
+                    <i class="fa-solid fa-glasses"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-white tracking-wide text-sm">CAMBRIDGE</h1>
+                    <p class="text-xs text-sky-400 font-medium">Opticians Management</p>
+                </div>
+            </div>
+            <button id="mobile-menu-toggle" class="md:hidden text-slate-400 hover:text-white">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+        </div>
+
+        <!-- System Status Bar -->
+        <div class="px-4 py-2 bg-slate-950/60 border-b border-slate-800/80 flex items-center justify-between text-xs">
+            <span class="text-slate-400">Database Status:</span>
+            <span id="firebase-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                <i class="fa-solid fa-database text-[8px]"></i> Local Cache
+            </span>
+        </div>
+
+        <!-- Navigation Links -->
+        <nav class="flex-1 p-3 space-y-1 overflow-y-auto" id="main-nav">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all bg-sky-600 text-white shadow-md shadow-sky-600/30">
+                <i class="fa-solid fa-chart-pie w-5 text-center"></i> Executive Summary
+            </button>
+            <button onclick="switchTab('patients')" id="nav-patients" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-slate-800 hover:text-white text-slate-400">
+                <i class="fa-solid fa-user-doctor w-5 text-center"></i> Patients & EHR Rx
+            </button>
+            <button onclick="switchTab('inventory')" id="nav-inventory" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-slate-800 hover:text-white text-slate-400">
+                <i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Optical Inventory
+            </button>
+            <button onclick="switchTab('pos')" id="nav-pos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-slate-800 hover:text-white text-slate-400">
+                <i class="fa-solid fa-cash-register w-5 text-center"></i> POS & Billing
+            </button>
+            <button onclick="switchTab('lab')" id="nav-lab" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-slate-800 hover:text-white text-slate-400">
+                <i class="fa-solid fa-vial-virus w-5 text-center"></i> Lab Work Orders
+                <span id="lab-pending-badge" class="ml-auto bg-amber-500 text-slate-950 font-bold text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+            </button>
+            <button onclick="switchTab('crm')" id="nav-crm" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-slate-800 hover:text-white text-slate-400">
+                <i class="fa-solid fa-users-gear w-5 text-center"></i> CRM & Recalls
+            </button>
+            <button onclick="switchTab('reports')" id="nav-reports" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-slate-800 hover:text-white text-slate-400">
+                <i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i> Financials & Audits
+            </button>
+        </nav>
+
+        <!-- Quick Data Seed & User Info -->
+        <div class="p-3 border-t border-slate-800 space-y-2">
+            <button onclick="seedDatabaseWithSampleData()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-2 px-3 rounded-lg border border-slate-700 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-arrows-rotate text-sky-400"></i> Seed Sample Dataset
+            </button>
+            <div class="flex items-center gap-2 pt-1 text-xs text-slate-400 px-1">
+                <i class="fa-solid fa-circle-user text-slate-500"></i>
+                <span class="truncate font-medium">Store Admin (Cambridge)</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Work Area -->
+    <main class="flex-1 overflow-y-auto flex flex-col bg-slate-50">
+        <!-- Top Toolbar -->
+        <header class="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+            <div class="flex items-center gap-4">
+                <h2 id="page-title" class="text-xl font-bold text-slate-900 tracking-tight">Executive Summary</h2>
+                <span id="page-subtitle" class="hidden sm:inline text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full border border-slate-200 font-medium">
+                    Cambridge Opticians Main Branch
+                </span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="relative hidden sm:block">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                    <input type="text" id="global-search" oninput="handleGlobalSearch(this.value)" placeholder="Search Patient, Rx, Order #..." class="pl-8 pr-4 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs w-60 focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none">
+                </div>
+                <button onclick="openNewPatientModal()" class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-plus"></i> <span class="hidden md:inline">New Patient</span>
+                </button>
+                <button onclick="openNewOrderModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-cart-plus"></i> <span class="hidden md:inline">New Order</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dynamic View Sections -->
+        <div class="p-6 flex-1">
+            
+            <!-- VIEW 1: EXECUTIVE DASHBOARD -->
+            <section id="view-dashboard" class="tab-view space-y-6">
+                <!-- Summary Metrics Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Sales Today</p>
+                            <h3 id="dash-sales-today" class="text-2xl font-bold text-slate-900 mt-1">Rs. 0</h3>
+                            <p class="text-[11px] text-emerald-600 font-medium mt-1 flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-up"></i> <span id="dash-sales-count">0 transactions</span>
+                            </p>
+                        </div>
+                        <div class="h-12 w-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-receipt"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Work Orders</p>
+                            <h3 id="dash-active-lab" class="text-2xl font-bold text-amber-600 mt-1">0</h3>
+                            <p class="text-[11px] text-slate-500 font-medium mt-1">In Optical Lab Pipeline</p>
+                        </div>
+                        <div class="h-12 w-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-screwdriver-wrench"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Registered Patients</p>
+                            <h3 id="dash-patients-total" class="text-2xl font-bold text-slate-900 mt-1">0</h3>
+                            <p class="text-[11px] text-sky-600 font-medium mt-1">With Complete Refraction EHR</p>
+                        </div>
+                        <div class="h-12 w-12 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-hospital-user"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Low Stock Warnings</p>
+                            <h3 id="dash-low-stock" class="text-2xl font-bold text-rose-600 mt-1">0</h3>
+                            <p class="text-[11px] text-rose-600 font-medium mt-1">Frames/Lenses below threshold</p>
+                        </div>
+                        <div class="h-12 w-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Quick Action Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Recent Orders List -->
+                    <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                        <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-clock-rotate-left text-sky-600"></i> Recent Customer Orders
+                            </h3>
+                            <button onclick="switchTab('pos')" class="text-xs font-semibold text-sky-600 hover:text-sky-700">View All</button>
+                        </div>
+                        <div class="divide-y divide-slate-100 overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100/70 text-slate-500 uppercase text-[10px]">
+                                        <th class="p-3">Order #</th>
+                                        <th class="p-3">Patient</th>
+                                        <th class="p-3">Item Summary</th>
+                                        <th class="p-3">Total</th>
+                                        <th class="p-3">Status</th>
+                                        <th class="p-3 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dash-recent-orders-body" class="divide-y divide-slate-100">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Lab Workflow Overview -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm mb-3 flex items-center justify-between">
+                                <span class="flex items-center gap-2"><i class="fa-solid fa-vial text-amber-500"></i> Lab Pipeline Breakdown</span>
+                                <button onclick="switchTab('lab')" class="text-xs text-sky-600 font-medium">Board &rarr;</button>
+                            </h3>
+                            <div class="space-y-3" id="dash-lab-summary-stack">
+                                <!-- Dynamic Breakdown bars -->
+                            </div>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-100 bg-sky-50/50 -mx-4 -mb-4 p-4 rounded-b-xl border-dashed">
+                            <p class="text-xs text-sky-900 font-semibold mb-1">Quick SMS/WhatsApp Notification</p>
+                            <p class="text-[11px] text-sky-700">Auto-triggers ready alerts when edging/QC is marked passed in lab.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 2: PATIENTS & EHR PRESCRIPTIONS -->
+            <section id="view-patients" class="tab-view space-y-6 hidden">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Patient Electronic Health Records (EHR)</h3>
+                        <p class="text-xs text-slate-500">Manage patient demographics, medical history, and clinical optical refractions.</p>
+                    </div>
+                    <button onclick="openNewPatientModal()" class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-sm transition flex items-center gap-2 self-start">
+                        <i class="fa-solid fa-user-plus"></i> Register New Patient
+                    </button>
+                </div>
+
+                <!-- Patient Grid / Table Container -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="relative flex-1 max-w-md">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                            <input type="text" id="patient-search-input" oninput="renderPatientsTable()" placeholder="Search patient by name, phone, MRN..." class="pl-8 pr-4 py-1.5 text-xs bg-white border border-slate-300 rounded-lg w-full outline-none focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <span id="patient-count-tag" class="text-xs text-slate-500 font-medium">Showing 0 Patients</span>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-600 uppercase text-[10px] tracking-wider border-b border-slate-200">
+                                    <th class="p-3">MRN / ID</th>
+                                    <th class="p-3">Patient Name</th>
+                                    <th class="p-3">Age / Gender</th>
+                                    <th class="p-3">Contact</th>
+                                    <th class="p-3">Medical History</th>
+                                    <th class="p-3">Prescriptions</th>
+                                    <th class="p-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patients-table-body" class="divide-y divide-slate-100">
+                                <!-- Dynamic Patient Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 3: OPTICAL INVENTORY MANAGEMENT -->
+            <section id="view-inventory" class="tab-view space-y-6 hidden">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Optical Inventory & Stock Control</h3>
+                        <p class="text-xs text-slate-500">Manage Frames, Lens Matrix powers/coatings, and Contact Lenses.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="openNewInventoryModal()" class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm transition flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Add Stock Item
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sub Navigation Tabs for Inventory Types -->
+                <div class="flex border-b border-slate-200 space-x-6 text-xs font-semibold">
+                    <button onclick="switchInventorySubtab('frames')" id="inv-subtab-frames" class="inv-subtab border-b-2 border-sky-600 text-sky-600 pb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-glasses"></i> Frames & Sunglasses
+                    </button>
+                    <button onclick="switchInventorySubtab('lenses')" id="inv-subtab-lenses" class="inv-subtab border-b-2 border-transparent text-slate-500 hover:text-slate-800 pb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-dot"></i> Lens Power Matrix
+                    </button>
+                    <button onclick="switchInventorySubtab('contacts')" id="inv-subtab-contacts" class="inv-subtab border-b-2 border-transparent text-slate-500 hover:text-slate-800 pb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-eye"></i> Contact Lenses
+                    </button>
+                </div>
+
+                <!-- Inventory Data Table -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                        <input type="text" id="inventory-search" oninput="renderInventoryTable()" placeholder="Search stock by SKU, Brand, Model, Power..." class="pl-3 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg w-64 outline-none focus:ring-2 focus:ring-sky-500">
+                        <span id="inventory-subtab-label" class="text-xs text-slate-500 font-medium">Showing Frame Stock</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead id="inventory-table-head" class="bg-slate-100 text-slate-600 uppercase text-[10px]">
+                                <!-- Dynamic Headers -->
+                            </thead>
+                            <tbody id="inventory-table-body" class="divide-y divide-slate-100">
+                                <!-- Dynamic Stock Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 4: POINT OF SALE (POS) & BILLING -->
+            <section id="view-pos" class="tab-view space-y-6 hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Left Column: POS Order Creator -->
+                    <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-5">
+                        <div class="border-b border-slate-200 pb-3 flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-base">New Optical Sales Order</h3>
+                                <p class="text-xs text-slate-500">Link patient refraction & build itemized invoice</p>
+                            </div>
+                            <span class="text-xs font-mono bg-sky-50 text-sky-700 px-2.5 py-1 rounded border border-sky-200" id="pos-order-num-display">
+                                ORD-2026-XXXX
+                            </span>
+                        </div>
+
+                        <!-- Step 1: Select Patient & Prescription -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Select Patient *</label>
+                                <select id="pos-patient-select" onchange="handlePOSPatientChange(this.value)" class="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-sky-500 bg-white">
+                                    <option value="">-- Choose Patient --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Attach Active Prescription *</label>
+                                <select id="pos-rx-select" class="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-sky-500 bg-white">
+                                    <option value="">-- Select Rx --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Selected Prescription Preview Box -->
+                        <div id="pos-rx-preview-box" class="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs hidden">
+                            <p class="font-bold text-slate-700 mb-1 text-[11px] uppercase tracking-wide">Attached Eye Refraction Summary:</p>
+                            <div class="grid grid-cols-2 gap-2 text-slate-600 font-mono text-[11px]" id="pos-rx-preview-content">
+                                <!-- Dynamic Rx metrics -->
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Add Inventory Items -->
+                        <div class="space-y-3">
+                            <p class="text-xs font-bold text-slate-800 uppercase tracking-wider">Select Line Items</p>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div class="sm:col-span-2">
+                                    <select id="pos-item-select" class="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-sky-500 bg-white">
+                                        <option value="">-- Choose Frame, Lens or Contact Lens --</option>
+                                    </select>
+                                </div>
+                                <button onclick="addSelectedPosItem()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg transition">
+                                    <i class="fa-solid fa-plus"></i> Add Item
+                                </button>
+                            </div>
+
+                            <!-- Fitting Charges Extra -->
+                            <div class="flex items-center gap-3 pt-2">
+                                <label class="text-xs text-slate-600 font-medium">Lab Fitting/Glazing Fee (Rs.):</label>
+                                <input type="number" id="pos-fitting-fee" value="500" oninput="calculatePosTotals()" class="w-28 text-xs border border-slate-300 rounded-lg px-2.5 py-1 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Selected Line Items Table -->
+                        <div class="border border-slate-200 rounded-lg overflow-hidden">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-100 text-slate-600 uppercase text-[10px]">
+                                    <tr>
+                                        <th class="p-2.5">Item Description</th>
+                                        <th class="p-2.5">Qty</th>
+                                        <th class="p-2.5">Unit Price</th>
+                                        <th class="p-2.5">Subtotal</th>
+                                        <th class="p-2.5 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pos-cart-body" class="divide-y divide-slate-100">
+                                    <tr>
+                                        <td colspan="5" class="p-4 text-center text-slate-400">No items added to invoice cart yet.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Checkout & Billing Calculations -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between space-y-4">
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-base border-b border-slate-200 pb-3">Checkout & Payment</h3>
+                            
+                            <div class="space-y-3 mt-4 text-xs">
+                                <div class="flex justify-between text-slate-600">
+                                    <span>Items Gross Total:</span>
+                                    <span id="pos-calc-gross" class="font-semibold text-slate-900">Rs. 0</span>
+                                </div>
+                                <div class="flex justify-between text-slate-600">
+                                    <span>Fitting & Glazing:</span>
+                                    <span id="pos-calc-fitting" class="font-semibold text-slate-900">Rs. 0</span>
+                                </div>
+                                <div class="flex justify-between items-center text-slate-600">
+                                    <span>Discount (Rs.):</span>
+                                    <input type="number" id="pos-discount" value="0" oninput="calculatePosTotals()" class="w-24 text-right border border-slate-300 rounded px-2 py-1 text-xs">
+                                </div>
+
+                                <div class="border-t border-slate-200 pt-2 flex justify-between text-sm font-bold text-slate-900">
+                                    <span>Net Payable:</span>
+                                    <span id="pos-calc-net" class="text-sky-700">Rs. 0</span>
+                                </div>
+
+                                <div class="border-t border-dashed border-slate-200 pt-3 space-y-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">Advance Deposit Paid (Rs.) *</label>
+                                        <input type="number" id="pos-deposit" value="0" oninput="calculatePosTotals()" class="w-full text-xs border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-sky-500">
+                                    </div>
+
+                                    <div class="flex justify-between items-center p-2.5 bg-amber-50 rounded-lg border border-amber-200 font-semibold text-amber-900">
+                                        <span>Balance Due on Delivery:</span>
+                                        <span id="pos-calc-balance" class="text-sm">Rs. 0</span>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">Payment Method</label>
+                                        <select id="pos-payment-mode" class="w-full text-xs border border-slate-300 rounded-lg px-3 py-1.5 bg-white">
+                                            <option value="Cash">Cash Payment</option>
+                                            <option value="Card">Credit/Debit Card</option>
+                                            <option value="Digital/Wallet">Digital Wallet (JazzCash/Easypaisa)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2 pt-4">
+                            <button onclick="submitPosOrder()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2 text-sm">
+                                <i class="fa-solid fa-check-circle"></i> Confirm Order & Route to Lab
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 5: LAB WORK ORDER TRACKING (KANBAN) -->
+            <section id="view-lab" class="tab-view space-y-6 hidden">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Optical Lab Work Order Pipeline</h3>
+                        <p class="text-xs text-slate-500">Track job cards from sales desk through edging, QC, pickup, and delivery.</p>
+                    </div>
+                </div>
+
+                <!-- Kanban Pipeline Board -->
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 overflow-x-auto pb-4">
+                    
+                    <!-- Column 1: Order Placed -->
+                    <div class="bg-slate-100/80 p-3 rounded-xl border border-slate-200 min-w-[200px] flex flex-col h-[650px]">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">1. Placed</span>
+                            <span id="kanban-count-placed" class="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
+                        </div>
+                        <div id="kanban-col-placed" class="flex-1 space-y-2 overflow-y-auto pr-1">
+                            <!-- Cards -->
+                        </div>
+                    </div>
+
+                    <!-- Column 2: Sent to Lab -->
+                    <div class="bg-slate-100/80 p-3 rounded-xl border border-slate-200 min-w-[200px] flex flex-col h-[650px]">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-amber-700 uppercase tracking-wider">2. In Lab</span>
+                            <span id="kanban-count-lab" class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
+                        </div>
+                        <div id="kanban-col-lab" class="flex-1 space-y-2 overflow-y-auto pr-1">
+                            <!-- Cards -->
+                        </div>
+                    </div>
+
+                    <!-- Column 3: Cutting & Edging -->
+                    <div class="bg-slate-100/80 p-3 rounded-xl border border-slate-200 min-w-[200px] flex flex-col h-[650px]">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-blue-700 uppercase tracking-wider">3. Glazing</span>
+                            <span id="kanban-count-glazing" class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
+                        </div>
+                        <div id="kanban-col-glazing" class="flex-1 space-y-2 overflow-y-auto pr-1">
+                            <!-- Cards -->
+                        </div>
+                    </div>
+
+                    <!-- Column 4: QC Passed -->
+                    <div class="bg-slate-100/80 p-3 rounded-xl border border-slate-200 min-w-[200px] flex flex-col h-[650px]">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider">4. QC Passed</span>
+                            <span id="kanban-count-qc" class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
+                        </div>
+                        <div id="kanban-col-qc" class="flex-1 space-y-2 overflow-y-auto pr-1">
+                            <!-- Cards -->
+                        </div>
+                    </div>
+
+                    <!-- Column 5: Ready For Pickup -->
+                    <div class="bg-slate-100/80 p-3 rounded-xl border border-slate-200 min-w-[200px] flex flex-col h-[650px]">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider">5. Ready</span>
+                            <span id="kanban-count-ready" class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
+                        </div>
+                        <div id="kanban-col-ready" class="flex-1 space-y-2 overflow-y-auto pr-1">
+                            <!-- Cards -->
+                        </div>
+                    </div>
+
+                    <!-- Column 6: Delivered -->
+                    <div class="bg-slate-100/80 p-3 rounded-xl border border-slate-200 min-w-[200px] flex flex-col h-[650px]">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">6. Delivered</span>
+                            <span id="kanban-count-delivered" class="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
+                        </div>
+                        <div id="kanban-col-delivered" class="flex-1 space-y-2 overflow-y-auto pr-1">
+                            <!-- Cards -->
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- VIEW 6: CRM & RECALL SYSTEM -->
+            <section id="view-crm" class="tab-view space-y-6 hidden">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">CRM & Patient Recall Engine</h3>
+                        <p class="text-xs text-slate-500">Automated 12-month eye exam reminders & contact lens replenishment alerts.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Annual Eye Exam Recalls Due -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-calendar-check text-sky-600"></i> Annual Eye Test Recalls Due
+                            </h4>
+                            <span id="crm-recall-count" class="text-xs bg-sky-100 text-sky-800 px-2.5 py-0.5 rounded-full font-semibold">0 Patients</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Patients whose last refraction check was over 11-12 months ago:</p>
+                        
+                        <div class="divide-y divide-slate-100" id="crm-recall-list">
+                            <!-- Dynamic Recalls -->
+                        </div>
+                    </div>
+
+                    <!-- Contact Lens Replacement Alerts -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-eye text-emerald-600"></i> Contact Lens Supply Reminders
+                            </h4>
+                            <span class="text-xs bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-semibold">Monthly Schedules</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Patients requiring contact lens refill or schedule renewal:</p>
+                        
+                        <div class="divide-y divide-slate-100" id="crm-cl-list">
+                            <!-- Dynamic Contact Lens Alerts -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 7: FINANCIALS & AUDIT REPORTS -->
+            <section id="view-reports" class="tab-view space-y-6 hidden">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900">Financial Reports & Performance Audits</h3>
+                    <p class="text-xs text-slate-500">Comprehensive breakdown of sales, pending dues, and optometrist throughput.</p>
+                </div>
+
+                <!-- Financial Metric Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-xs text-slate-500 uppercase font-medium">Total Gross Revenue</p>
+                        <h4 id="report-gross-rev" class="text-2xl font-bold text-slate-900 mt-1">Rs. 0</h4>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-xs text-slate-500 uppercase font-medium">Advance Deposits Collected</p>
+                        <h4 id="report-deposits" class="text-2xl font-bold text-emerald-600 mt-1">Rs. 0</h4>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-xs text-slate-500 uppercase font-medium">Outstanding Balances Due</p>
+                        <h4 id="report-balances" class="text-2xl font-bold text-rose-600 mt-1">Rs. 0</h4>
+                    </div>
+                </div>
+
+                <!-- Detailed Audit Tables -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Payment Mode Breakdown -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-3">
+                        <h4 class="font-bold text-slate-800 text-sm border-b border-slate-100 pb-2">Collections by Payment Mode</h4>
+                        <div class="space-y-2 text-xs" id="report-payment-mode-stack">
+                            <!-- Dynamic Stack -->
+                        </div>
+                    </div>
+
+                    <!-- Pending Dues Orders -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-3">
+                        <h4 class="font-bold text-slate-800 text-sm border-b border-slate-100 pb-2 text-rose-700">Orders with Outstanding Balance</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead>
+                                    <tr class="text-slate-500 border-b border-slate-100 uppercase text-[10px]">
+                                        <th class="pb-2">Order #</th>
+                                        <th class="pb-2">Patient</th>
+                                        <th class="pb-2">Total</th>
+                                        <th class="pb-2 text-right">Balance Due</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="report-pending-dues-body" class="divide-y divide-slate-100">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- MODAL 1: NEW PATIENT & REFRACTION EHR ENTRY -->
+    <div id="modal-patient" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="p-4 bg-slate-900 text-white flex items-center justify-between">
+                <h3 class="font-bold text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-user-doctor text-sky-400"></i> New Patient EHR & Eye Refraction Entry
+                </h3>
+                <button onclick="closeModal('modal-patient')" class="text-slate-400 hover:text-white text-lg">&times;</button>
+            </div>
+            
+            <form id="form-patient-ehr" onsubmit="handleSavePatient(event)" class="p-6 overflow-y-auto space-y-6 text-xs">
+                
+                <!-- Demographics Section -->
+                <div class="space-y-3">
+                    <h4 class="font-bold text-slate-900 border-b pb-1 text-xs uppercase tracking-wider text-sky-700">1. Patient Demographics</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block font-semibold text-slate-700 mb-1">Full Name *</label>
+                            <input type="text" id="pat-name" required placeholder="e.g. Muhammad Ali" class="w-full border border-slate-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Phone Number *</label>
+                            <input type="text" id="pat-phone" required placeholder="0300-1234567" class="w-full border border-slate-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Age</label>
+                            <input type="number" id="pat-age" placeholder="35" class="w-full border border-slate-300 rounded-lg px-3 py-1.5 outline-none">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Gender</label>
+                            <select id="pat-gender" class="w-full border border-slate-300 rounded-lg px-3 py-1.5 outline-none bg-white">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Medical History</label>
+                            <input type="text" id="pat-medical" placeholder="Diabetes, Hypertension..." class="w-full border border-slate-300 rounded-lg px-3 py-1.5 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Refraction Eye Test Section -->
+                <div class="space-y-3">
+                    <h4 class="font-bold text-slate-900 border-b pb-1 text-xs uppercase tracking-wider text-sky-700">2. Optical Refraction Test (Prescription)</h4>
+                    
+                    <!-- Distance Vision Grid -->
+                    <div class="border border-slate-200 rounded-lg p-3 bg-slate-50 space-y-2">
+                        <p class="font-bold text-slate-700 text-[11px] uppercase">Distance Vision</p>
+                        <div class="grid grid-cols-9 gap-1.5 text-center font-semibold text-slate-600 text-[10px]">
+                            <div class="col-span-1">Eye</div>
+                            <div class="col-span-2">SPH</div>
+                            <div class="col-span-2">CYL</div>
+                            <div class="col-span-2">AXIS</div>
+                            <div class="col-span-2">ADD</div>
+                        </div>
+
+                        <!-- Right Eye (OD) -->
+                        <div class="grid grid-cols-9 gap-1.5 items-center">
+                            <span class="font-bold text-slate-900 text-center">OD (R)</span>
+                            <input type="text" id="rx-od-sph" placeholder="-1.25" class="col-span-2 border rounded px-1.5 py-1 text-center font-mono">
+                            <input type="text" id="rx-od-cyl" placeholder="-0.50" class="col-span-2 border rounded px-1.5 py-1 text-center font-mono">
+                            <input type="text" id="rx-od-axis" placeholder="180" class="col-span-2 border rounded px-1.5 py-1 text-center font-mono">
+                            <input type="text" id="rx-od-add" placeholder="+2.00" class="col-span-2 border rounded px-1.5 py-1 text-center font-mono">
+                        </div>
+
+                        <!-- Left Eye (OS) -->
+                        <div class="grid grid-cols-9 gap-1.5 items-center">
+                            <span class="font-bold text-slate-900 text-center">OS (L)</span>
+                            <input type="text" id="rx-os-sph" placeholder="-1.50" class="col-span-2 border rounded px-1.5 py-1 text-center font-mono">
+                            <input type="text" id="rx-os-cyl" placeholder="-0.75" class="col-span-2 border rounded px-1.5 py-1 text-center font-mono">
+                            <input type="text" id="rx-os-axis" placeholder="90" class="col-span-2 border rounded px-1.5 py-1 text-center font-mono">
+                            <input type="text" id="rx-os-add" placeholder="+2.00" class="col-span-2 border rounded px-1.5 py-1 text-center font-mono">
+                        </div>
+                    </div>
+
+                    <!-- Pupillary Distance & Optics -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Pupillary Dist (PD mm)</label>
+                            <input type="text" id="rx-pd" placeholder="64 (32/32)" class="w-full border border-slate-300 rounded-lg px-2.5 py-1 outline-none font-mono">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Prism / Base</label>
+                            <input type="text" id="rx-prism" placeholder="1.0 BU" class="w-full border border-slate-300 rounded-lg px-2.5 py-1 outline-none font-mono">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block font-semibold text-slate-700 mb-1">Recommended Lens Coating</label>
+                            <input type="text" id="rx-recommendations" placeholder="Blue Cut, Anti-Reflective, Progressive" class="w-full border border-slate-300 rounded-lg px-2.5 py-1 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('modal-patient')" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-lg shadow-sm">Save Patient & Rx</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: NEW INVENTORY ITEM -->
+    <div id="modal-inventory" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div class="p-4 bg-slate-900 text-white flex items-center justify-between">
+                <h3 class="font-bold text-sm"><i class="fa-solid fa-boxes-stacked"></i> Add Inventory Stock Item</h3>
+                <button onclick="closeModal('modal-inventory')" class="text-slate-400 hover:text-white text-lg">&times;</button>
+            </div>
+            
+            <form id="form-inventory-item" onsubmit="handleSaveInventory(event)" class="p-6 space-y-4 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Stock Item Type</label>
+                    <select id="inv-item-type" class="w-full border border-slate-300 rounded-lg px-3 py-1.5 outline-none bg-white">
+                        <option value="frame">Frame / Sunglasses</option>
+                        <option value="lens">Lens Power Matrix Item</option>
+                        <option value="contact">Contact Lens Pack</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Brand Name *</label>
+                        <input type="text" id="inv-brand" required placeholder="RayBan, Essilor, Air Optix" class="w-full border rounded-lg px-3 py-1.5 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Model / Specs *</label>
+                        <input type="text" id="inv-model" required placeholder="RB-3025 Aviator / 1.56 BlueCut" class="w-full border rounded-lg px-3 py-1.5 outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Stock Qty *</label>
+                        <input type="number" id="inv-qty" required value="10" class="w-full border rounded-lg px-3 py-1.5 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Cost Price (Rs)</label>
+                        <input type="number" id="inv-cost" required value="1500" class="w-full border rounded-lg px-3 py-1.5 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Selling Price *</label>
+                        <input type="number" id="inv-price" required value="3500" class="w-full border rounded-lg px-3 py-1.5 outline-none">
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('modal-inventory')" class="px-4 py-2 border rounded-lg text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-lg shadow-sm">Save Stock Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: PRINTABLE THERMAL RECEIPT & WORK ORDER JOB CARD -->
+    <div id="modal-receipt" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col">
+            <div class="p-3 bg-slate-800 text-white flex items-center justify-between">
+                <h3 class="font-bold text-xs"><i class="fa-solid fa-print"></i> Customer Thermal Receipt & Job Card</h3>
+                <button onclick="closeModal('modal-receipt')" class="text-slate-400 hover:text-white">&times;</button>
+            </div>
+
+            <div class="p-6 bg-slate-50 overflow-y-auto max-h-[75vh]" id="printable-receipt">
+                <!-- Dynamic Thermal Receipt Content -->
+            </div>
+
+            <div class="p-3 bg-white border-t border-slate-200 flex justify-end gap-2">
+                <button onclick="closeModal('modal-receipt')" class="px-3 py-1.5 border rounded-lg text-xs font-semibold">Close</button>
+                <button onclick="window.print()" class="px-4 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-semibold shadow-sm flex items-center gap-1">
+                    <i class="fa-solid fa-print"></i> Print Thermal Receipt
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Application State Container
+        window.appState = {
+            db: null,
+            patients: [],
+            inventory: [],
+            orders: [],
+            posCart: [],
+            activeSubtab: 'frames'
+        };
+
+        // Initialize App & Try Firebase Connection
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const app = initializeApp(firebaseConfig);
+                window.appState.db = getFirestore(app);
+                
+                const badge = document.getElementById('firebase-status-badge');
+                badge.innerHTML = '<i class="fa-solid fa-wifi text-[8px]"></i> Firebase Online';
+                badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1';
+                
+                await loadAllDataFromFirebase();
+            } catch (e) {
+                console.warn("Firebase not configured or offline. Operating on Local Memory Cache with seed data.", e);
+                seedDefaultLocalState();
+            }
+
+            renderCurrentTab();
+        });
+
+        // Load Firestore Collections
+        async function loadAllDataFromFirebase() {
+            if (!window.appState.db) return;
+            try {
+                const patSnap = await getDocs(collection(window.appState.db, "patients"));
+                window.appState.patients = patSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                const invSnap = await getDocs(collection(window.appState.db, "inventory"));
+                window.appState.inventory = invSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                const ordSnap = await getDocs(collection(window.appState.db, "orders"));
+                window.appState.orders = ordSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                if (window.appState.patients.length === 0) {
+                    seedDefaultLocalState();
+                } else {
+                    renderCurrentTab();
+                }
+            } catch (err) {
+                console.error("Error fetching Firestore collections:", err);
+                seedDefaultLocalState();
+            }
+        }
+
+        function seedDefaultLocalState() {
+            window.appState.patients = [
+                {
+                    id: 'pat-101',
+                    mrn: 'CAM-P-1001',
+                    name: 'Muhammad Tariq',
+                    phone: '0300-5551234',
+                    age: 42,
+                    gender: 'Male',
+                    medicalHistory: 'Hypertension',
+                    lastVisit: '2026-03-10',
+                    rx: {
+                        od: { sph: '-1.50', cyl: '-0.50', axis: '180', add: '+1.75' },
+                        os: { sph: '-1.75', cyl: '-0.75', axis: '165', add: '+1.75' },
+                        pd: '63 (31.5/31.5)',
+                        recommendations: 'Progressive Lens with Anti-Reflective HMC'
+                    }
+                },
+                {
+                    id: 'pat-102',
+                    mrn: 'CAM-P-1002',
+                    name: 'Fatima Zahra',
+                    phone: '0321-8889900',
+                    age: 28,
+                    gender: 'Female',
+                    medicalHistory: 'None',
+                    lastVisit: '2025-10-12',
+                    rx: {
+                        od: { sph: '-2.25', cyl: '-1.00', axis: '90', add: '-' },
+                        os: { sph: '-2.00', cyl: '-0.50', axis: '85', add: '-' },
+                        pd: '61',
+                        recommendations: 'Blue Cut 1.61 High Index Single Vision'
+                    }
+                }
+            ];
+
+            window.appState.inventory = [
+                { id: 'inv-1', type: 'frame', brand: 'RayBan', model: 'RB-5154 Clubmaster', qty: 12, cost: 4500, price: 9500, category: 'Frames' },
+                { id: 'inv-2', type: 'frame', brand: 'Oakley', model: 'OX8156 Holbrook Optical', qty: 3, cost: 5500, price: 12000, category: 'Frames' },
+                { id: 'inv-3', type: 'lens', brand: 'Essilor Crizal', model: '1.56 Single Vision Anti-Glare', qty: 25, cost: 1200, price: 2800, category: 'Lenses' },
+                { id: 'inv-4', type: 'lens', brand: 'Zeiss Photogrey', model: '1.61 Progressive Transitions', qty: 4, cost: 6000, price: 14500, category: 'Lenses' },
+                { id: 'inv-5', type: 'contact', brand: 'Acuvue Oasys', model: 'Bi-Weekly Spherical (BC 8.4)', qty: 18, cost: 2200, price: 4200, category: 'Contact Lenses' }
+            ];
+
+            window.appState.orders = [
+                {
+                    id: 'ord-5001',
+                    orderNum: 'ORD-2026-8801',
+                    patientId: 'pat-101',
+                    patientName: 'Muhammad Tariq',
+                    patientPhone: '0300-5551234',
+                    items: [
+                        { name: 'RayBan RB-5154 Clubmaster', price: 9500, qty: 1 },
+                        { name: 'Essilor Crizal 1.56 Anti-Glare Lens', price: 2800, qty: 1 }
+                    ],
+                    fittingFee: 500,
+                    gross: 12800,
+                    discount: 800,
+                    net: 12000,
+                    deposit: 5000,
+                    balance: 7000,
+                    paymentMode: 'Cash',
+                    labStatus: 'glazing', // placed, lab, glazing, qc, ready, delivered
+                    date: '2026-10-11'
+                }
+            ];
+
+            renderCurrentTab();
+        }
+
+        window.seedDatabaseWithSampleData = function() {
+            seedDefaultLocalState();
+            alert("Sample dataset loaded successfully into memory!");
+        };
+
+        // Navigation Switcher
+        window.currentTab = 'dashboard';
+
+        window.switchTab = function(tabName) {
+            window.currentTab = tabName;
+            
+            document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = "nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-slate-800 hover:text-white text-slate-400";
+            });
+
+            const activeNav = document.getElementById(`nav-${tabName}`);
+            if (activeNav) {
+                activeNav.className = "nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all bg-sky-600 text-white shadow-md shadow-sky-600/30";
+            }
+
+            const pageTitles = {
+                'dashboard': 'Executive Summary',
+                'patients': 'Patients & EHR Prescriptions',
+                'inventory': 'Optical Inventory & Stock Control',
+                'pos': 'Point of Sale (POS) & Billing',
+                'lab': 'Optical Lab Work Order Pipeline',
+                'crm': 'CRM & Patient Recall Engine',
+                'reports': 'Financials & Audit Reports'
+            };
+
+            document.getElementById('page-title').innerText = pageTitles[tabName] || 'Optical Management';
+            renderCurrentTab();
+        };
+
+        function renderCurrentTab() {
+            updateDashboardMetrics();
+            if (window.currentTab === 'dashboard') renderDashboardView();
+            if (window.currentTab === 'patients') renderPatientsTable();
+            if (window.currentTab === 'inventory') renderInventoryTable();
+            if (window.currentTab === 'pos') preparePOSView();
+            if (window.currentTab === 'lab') renderKanbanBoard();
+            if (window.currentTab === 'crm') renderCRMView();
+            if (window.currentTab === 'reports') renderReportsView();
+        }
+
+        // Global Metrics Calculation
+        function updateDashboardMetrics() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const ordersToday = window.appState.orders.filter(o => o.date === todayStr);
+            const totalSalesToday = ordersToday.reduce((sum, o) => sum + (o.net || 0), 0);
+            const activeLabCount = window.appState.orders.filter(o => o.labStatus !== 'delivered').length;
+            const lowStockCount = window.appState.inventory.filter(i => i.qty <= 5).length;
+
+            document.getElementById('dash-sales-today').innerText = `Rs. ${totalSalesToday.toLocaleString()}`;
+            document.getElementById('dash-sales-count').innerText = `${ordersToday.length} transactions today`;
+            document.getElementById('dash-active-lab').innerText = activeLabCount;
+            document.getElementById('dash-patients-total').innerText = window.appState.patients.length;
+            document.getElementById('dash-low-stock').innerText = lowStockCount;
+
+            document.getElementById('lab-pending-badge').innerText = activeLabCount;
+        }
+
+        function renderDashboardView() {
+            // Recent Orders Table
+            const tbody = document.getElementById('dash-recent-orders-body');
+            tbody.innerHTML = '';
+
+            const recent = [...window.appState.orders].reverse().slice(0, 5);
+            if (recent.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">No orders recorded yet.</td></tr>`;
+                return;
+            }
+
+            recent.forEach(ord => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="p-3 font-mono font-bold text-sky-700">${ord.orderNum}</td>
+                    <td class="p-3 font-medium text-slate-900">${ord.patientName}</td>
+                    <td class="p-3 text-slate-600">${ord.items.map(i => i.name).join(', ')}</td>
+                    <td class="p-3 font-bold text-slate-900">Rs. ${ord.net.toLocaleString()}</td>
+                    <td class="p-3">${getLabBadgeHtml(ord.labStatus)}</td>
+                    <td class="p-3 text-right">
+                        <button onclick="printOrderReceipt('${ord.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded font-medium">
+                            <i class="fa-solid fa-print"></i> Receipt
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Lab Summary Stack
+            const stack = document.getElementById('dash-lab-summary-stack');
+            const statuses = ['placed', 'lab', 'glazing', 'qc', 'ready'];
+            const labels = ['1. Placed', '2. In Lab', '3. Glazing', '4. QC Passed', '5. Ready'];
+
+            stack.innerHTML = statuses.map((st, idx) => {
+                const count = window.appState.orders.filter(o => o.labStatus === st).length;
+                return `
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-slate-600">${labels[idx]}:</span>
+                        <span class="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full">${count} jobs</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.renderPatientsTable = function() {
+            const query = (document.getElementById('patient-search-input')?.value || '').toLowerCase();
+            const tbody = document.getElementById('patients-table-body');
+            tbody.innerHTML = '';
+
+            const filtered = window.appState.patients.filter(p => 
+                p.name.toLowerCase().includes(query) || 
+                p.phone.includes(query) || 
+                p.mrn.toLowerCase().includes(query)
+            );
+
+            document.getElementById('patient-count-tag').innerText = `Showing ${filtered.length} Patients`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">No patient EHR records found.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="p-3 font-mono font-bold text-slate-700">${p.mrn}</td>
+                    <td class="p-3 font-semibold text-slate-900">${p.name}</td>
+                    <td class="p-3 text-slate-600">${p.age || '-'} Yrs / ${p.gender || '-'}</td>
+                    <td class="p-3 text-slate-600">${p.phone}</td>
+                    <td class="p-3"><span class="bg-amber-50 text-amber-800 text-[11px] px-2 py-0.5 rounded border border-amber-200">${p.medicalHistory || 'None'}</span></td>
+                    <td class="p-3 font-mono text-[11px]">
+                        OD: ${p.rx?.od?.sph || '0.00'} / OS: ${p.rx?.os?.sph || '0.00'}
+                    </td>
+                    <td class="p-3 text-right">
+                        <button onclick="openNewOrderForPatient('${p.id}')" class="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-2 py-1 rounded font-semibold mr-1">
+                            + New Order
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        window.switchInventorySubtab = function(subtab) {
+            window.appState.activeSubtab = subtab;
+            document.querySelectorAll('.inv-subtab').forEach(b => {
+                b.className = "inv-subtab border-b-2 border-transparent text-slate-500 hover:text-slate-800 pb-2 flex items-center gap-2";
+            });
+            const activeBtn = document.getElementById(`inv-subtab-${subtab}`);
+            if (activeBtn) activeBtn.className = "inv-subtab border-b-2 border-sky-600 text-sky-600 pb-2 flex items-center gap-2";
+            renderInventoryTable();
+        };
+
+        window.renderInventoryTable = function() {
+            const query = (document.getElementById('inventory-search')?.value || '').toLowerCase();
+            const typeFilter = window.appState.activeSubtab === 'frames' ? 'frame' : (window.appState.activeSubtab === 'lenses' ? 'lens' : 'contact');
+            
+            const head = document.getElementById('inventory-table-head');
+            const tbody = document.getElementById('inventory-table-body');
+            tbody.innerHTML = '';
+
+            head.innerHTML = `
+                <tr class="border-b border-slate-200">
+                    <th class="p-3">Item / Brand</th>
+                    <th class="p-3">Model / Specification</th>
+                    <th class="p-3">In Stock Qty</th>
+                    <th class="p-3">Cost (Rs)</th>
+                    <th class="p-3">Retail Price (Rs)</th>
+                    <th class="p-3 text-right">Status</th>
+                </tr>
+            `;
+
+            const items = window.appState.inventory.filter(i => 
+                i.type === typeFilter &&
+                (i.brand.toLowerCase().includes(query) || i.model.toLowerCase().includes(query))
+            );
+
+            if (items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">No stock items found in this category.</td></tr>`;
+                return;
+            }
+
+            items.forEach(i => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                const isLow = i.qty <= 5;
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-900">${i.brand}</td>
+                    <td class="p-3 text-slate-600">${i.model}</td>
+                    <td class="p-3 font-bold ${isLow ? 'text-rose-600' : 'text-slate-800'}">${i.qty} units</td>
+                    <td class="p-3 text-slate-500">Rs. ${i.cost.toLocaleString()}</td>
+                    <td class="p-3 font-bold text-sky-700">Rs. ${i.price.toLocaleString()}</td>
+                    <td class="p-3 text-right">
+                        ${isLow ? '<span class="bg-rose-100 text-rose-800 text-[10px] px-2 py-0.5 rounded font-bold">LOW STOCK</span>' : '<span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-semibold">IN STOCK</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        function preparePOSView() {
+            const patSelect = document.getElementById('pos-patient-select');
+            patSelect.innerHTML = '<option value="">-- Choose Patient --</option>';
+            window.appState.patients.forEach(p => {
+                patSelect.innerHTML += `<option value="${p.id}">${p.name} (${p.phone})</option>`;
+            });
+
+            const itemSelect = document.getElementById('pos-item-select');
+            itemSelect.innerHTML = '<option value="">-- Choose Frame, Lens or Contact Lens --</option>';
+            window.appState.inventory.forEach(i => {
+                itemSelect.innerHTML += `<option value="${i.id}">${i.brand} - ${i.model} (Rs. ${i.price}) [Stock: ${i.qty}]</option>`;
+            });
+
+            document.getElementById('pos-order-num-display').innerText = `ORD-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+            renderPosCart();
+        }
+
+        window.handlePOSPatientChange = function(patId) {
+            const rxSelect = document.getElementById('pos-rx-select');
+            const previewBox = document.getElementById('pos-rx-preview-box');
+            const previewContent = document.getElementById('pos-rx-preview-content');
+
+            if (!patId) {
+                rxSelect.innerHTML = '<option value="">-- Select Rx --</option>';
+                previewBox.classList.add('hidden');
+                return;
+            }
+
+            const pat = window.appState.patients.find(p => p.id === patId);
+            if (pat && pat.rx) {
+                rxSelect.innerHTML = `<option value="latest">Latest Refraction Exam (${pat.lastVisit || 'Today'})</option>`;
+                previewBox.classList.remove('hidden');
+                previewContent.innerHTML = `
+                    <div>OD (R): ${pat.rx.od.sph} SPH / ${pat.rx.od.cyl} CYL x ${pat.rx.od.axis}°</div>
+                    <div>OS (L): ${pat.rx.os.sph} SPH / ${pat.rx.os.cyl} CYL x ${pat.rx.os.axis}°</div>
+                    <div>PD: ${pat.rx.pd} mm</div>
+                    <div>Coating Rec: ${pat.rx.recommendations}</div>
+                `;
+            } else {
+                rxSelect.innerHTML = '<option value="">-- No Rx Recorded --</option>';
+                previewBox.classList.add('hidden');
+            }
+        };
+
+        window.addSelectedPosItem = function() {
+            const itemId = document.getElementById('pos-item-select').value;
+            if (!itemId) return alert('Please select an item from stock.');
+
+            const invItem = window.appState.inventory.find(i => i.id === itemId);
+            if (!invItem) return;
+
+            const existing = window.appState.posCart.find(c => c.id === itemId);
+            if (existing) {
+                existing.qty++;
+            } else {
+                window.appState.posCart.push({
+                    id: invItem.id,
+                    name: `${invItem.brand} ${invItem.model}`,
+                    price: invItem.price,
+                    qty: 1
+                });
+            }
+
+            renderPosCart();
+        };
+
+        window.removePosCartItem = function(idx) {
+            window.appState.posCart.splice(idx, 1);
+            renderPosCart();
+        };
+
+        function renderPosCart() {
+            const tbody = document.getElementById('pos-cart-body');
+            tbody.innerHTML = '';
+
+            if (window.appState.posCart.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">No items added to invoice cart yet.</td></tr>`;
+                calculatePosTotals();
+                return;
+            }
+
+            window.appState.posCart.forEach((item, idx) => {
+                const subtotal = item.price * item.qty;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-2.5 font-medium text-slate-900">${item.name}</td>
+                    <td class="p-2.5">${item.qty}</td>
+                    <td class="p-2.5">Rs. ${item.price.toLocaleString()}</td>
+                    <td class="p-2.5 font-bold text-slate-900">Rs. ${subtotal.toLocaleString()}</td>
+                    <td class="p-2.5 text-right">
+                        <button onclick="removePosCartItem(${idx})" class="text-rose-600 hover:text-rose-800"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            calculatePosTotals();
+        }
+
+        window.calculatePosTotals = function() {
+            const grossItems = window.appState.posCart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+            const fittingFee = parseFloat(document.getElementById('pos-fitting-fee').value || 0);
+            const discount = parseFloat(document.getElementById('pos-discount').value || 0);
+            const deposit = parseFloat(document.getElementById('pos-deposit').value || 0);
+
+            const netPayable = Math.max(0, (grossItems + fittingFee) - discount);
+            const balanceDue = Math.max(0, netPayable - deposit);
+
+            document.getElementById('pos-calc-gross').innerText = `Rs. ${grossItems.toLocaleString()}`;
+            document.getElementById('pos-calc-fitting').innerText = `Rs. ${fittingFee.toLocaleString()}`;
+            document.getElementById('pos-calc-net').innerText = `Rs. ${netPayable.toLocaleString()}`;
+            document.getElementById('pos-calc-balance').innerText = `Rs. ${balanceDue.toLocaleString()}`;
+        };
+
+        window.submitPosOrder = async function() {
+            const patId = document.getElementById('pos-patient-select').value;
+            if (!patId) return alert('Please select a patient for this order.');
+            if (window.appState.posCart.length === 0) return alert('Please add at least one optical item to cart.');
+
+            const pat = window.appState.patients.find(p => p.id === patId);
+            const grossItems = window.appState.posCart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+            const fittingFee = parseFloat(document.getElementById('pos-fitting-fee').value || 0);
+            const discount = parseFloat(document.getElementById('pos-discount').value || 0);
+            const netPayable = Math.max(0, (grossItems + fittingFee) - discount);
+            const deposit = parseFloat(document.getElementById('pos-deposit').value || 0);
+            const balanceDue = Math.max(0, netPayable - deposit);
+
+            const orderObj = {
+                orderNum: document.getElementById('pos-order-num-display').innerText,
+                patientId: pat.id,
+                patientName: pat.name,
+                patientPhone: pat.phone,
+                items: [...window.appState.posCart],
+                fittingFee: fittingFee,
+                gross: grossItems + fittingFee,
+                discount: discount,
+                net: netPayable,
+                deposit: deposit,
+                balance: balanceDue,
+                paymentMode: document.getElementById('pos-payment-mode').value,
+                labStatus: 'placed',
+                date: new Date().toISOString().split('T')[0]
+            };
+
+            if (window.appState.db) {
+                try {
+                    const docRef = await addDoc(collection(window.appState.db, "orders"), orderObj);
+                    orderObj.id = docRef.id;
+                } catch (e) {
+                    orderObj.id = 'ord-' + Date.now();
+                }
+            } else {
+                orderObj.id = 'ord-' + Date.now();
+            }
+
+            window.appState.orders.push(orderObj);
+            window.appState.posCart = [];
+            
+            alert('Order submitted successfully and routed to Optical Lab Pipeline!');
+            printOrderReceipt(orderObj.id);
+            switchTab('lab');
+        };
+
+        window.renderKanbanBoard = function() {
+            const columns = {
+                'placed': document.getElementById('kanban-col-placed'),
+                'lab': document.getElementById('kanban-col-lab'),
+                'glazing': document.getElementById('kanban-col-glazing'),
+                'qc': document.getElementById('kanban-col-qc'),
+                'ready': document.getElementById('kanban-col-ready'),
+                'delivered': document.getElementById('kanban-col-delivered')
+            };
+
+            Object.keys(columns).forEach(key => { if(columns[key]) columns[key].innerHTML = ''; });
+
+            const counts = { placed: 0, lab: 0, glazing: 0, qc: 0, ready: 0, delivered: 0 };
+
+            window.appState.orders.forEach(ord => {
+                const st = ord.labStatus || 'placed';
+                if (counts[st] !== undefined) counts[st]++;
+
+                const card = document.createElement('div');
+                card.className = 'bg-white p-3 rounded-lg border border-slate-200 shadow-sm space-y-2 text-xs hover:border-sky-400 transition';
+                card.innerHTML = `
+                    <div class="flex items-center justify-between font-mono font-bold text-sky-700">
+                        <span>${ord.orderNum}</span>
+                        <span class="text-[10px] text-slate-400">${ord.date}</span>
+                    </div>
+                    <div class="font-bold text-slate-800">${ord.patientName}</div>
+                    <div class="text-[11px] text-slate-500 truncate">${ord.items.map(i => i.name).join(', ')}</div>
+                    <div class="pt-1 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                        <span class="font-bold text-slate-900">Bal: Rs. ${ord.balance}</span>
+                        <button onclick="advanceOrderStatus('${ord.id}', '${st}')" class="bg-slate-900 text-white px-2 py-0.5 rounded hover:bg-sky-600 transition">
+                            Next &rarr;
+                        </button>
+                    </div>
+                `;
+
+                if (columns[st]) columns[st].appendChild(card);
+            });
+
+            Object.keys(counts).forEach(k => {
+                const badge = document.getElementById(`kanban-count-${k}`);
+                if (badge) badge.innerText = counts[k];
+            });
+        };
+
+        window.advanceOrderStatus = async function(orderId, currentStatus) {
+            const flow = ['placed', 'lab', 'glazing', 'qc', 'ready', 'delivered'];
+            const nextIdx = flow.indexOf(currentStatus) + 1;
+            if (nextIdx >= flow.length) return alert('Order is already fully delivered!');
+
+            const nextStatus = flow[nextIdx];
+            const ord = window.appState.orders.find(o => o.id === orderId);
+            if (!ord) return;
+
+            ord.labStatus = nextStatus;
+
+            if (window.appState.db && ord.id) {
+                try {
+                    await updateDoc(doc(window.appState.db, "orders", ord.id), { labStatus: nextStatus });
+                } catch (e) { console.error("Error updating status in Firebase", e); }
+            }
+
+            if (nextStatus === 'ready') {
+                triggerSMSAlert(ord);
+            }
+
+            renderKanbanBoard();
+        };
+
+        function triggerSMSAlert(ord) {
+            alert(`[AUTOMATED WHATSAPP / SMS ALERT SENT]\n\nTo: ${ord.patientName} (${ord.patientPhone})\n"Dear Customer, your Cambridge Opticians prescription glasses (Order #${ord.orderNum}) are Ready for Pickup! Balance Due: Rs. ${ord.balance}."`);
+        }
+
+        function renderCRMView() {
+            const recallList = document.getElementById('crm-recall-list');
+            recallList.innerHTML = '';
+
+            window.appState.patients.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'py-3 flex items-center justify-between text-xs';
+                item.innerHTML = `
+                    <div>
+                        <div class="font-bold text-slate-800">${p.name} (${p.phone})</div>
+                        <div class="text-slate-500 text-[11px]">Last Refraction Test: ${p.lastVisit || '12 Months Ago'}</div>
+                    </div>
+                    <button onclick="alert('Sending Annual Recall SMS to ${p.phone}...')" class="bg-sky-50 text-sky-700 hover:bg-sky-100 font-semibold px-2.5 py-1 rounded text-[11px]">
+                        <i class="fa-brands fa-whatsapp text-emerald-600"></i> Send Recall
+                    </button>
+                `;
+                recallList.appendChild(item);
+            });
+
+            document.getElementById('crm-recall-count').innerText = `${window.appState.patients.length} Patients Due`;
+        }
+
+        function renderReportsView() {
+            const totalGross = window.appState.orders.reduce((sum, o) => sum + o.net, 0);
+            const totalDeposits = window.appState.orders.reduce((sum, o) => sum + o.deposit, 0);
+            const totalBalances = window.appState.orders.reduce((sum, o) => sum + o.balance, 0);
+
+            document.getElementById('report-gross-rev').innerText = `Rs. ${totalGross.toLocaleString()}`;
+            document.getElementById('report-deposits').innerText = `Rs. ${totalDeposits.toLocaleString()}`;
+            document.getElementById('report-balances').innerText = `Rs. ${totalBalances.toLocaleString()}`;
+
+            // Pending dues list
+            const duesBody = document.getElementById('report-pending-dues-body');
+            duesBody.innerHTML = '';
+
+            const pending = window.appState.orders.filter(o => o.balance > 0);
+            if (pending.length === 0) {
+                duesBody.innerHTML = `<tr><td colspan="4" class="py-3 text-center text-slate-400">All orders fully paid!</td></tr>`;
+            } else {
+                pending.forEach(o => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="py-2 font-mono font-bold text-sky-700">${o.orderNum}</td>
+                        <td class="py-2 font-medium">${o.patientName}</td>
+                        <td class="py-2">Rs. ${o.net.toLocaleString()}</td>
+                        <td class="py-2 text-right font-bold text-rose-600">Rs. ${o.balance.toLocaleString()}</td>
+                    `;
+                    duesBody.appendChild(tr);
+                });
+            }
+        }
+
+        window.printOrderReceipt = function(orderId) {
+            const ord = window.appState.orders.find(o => o.id === orderId);
+            if (!ord) return;
+
+            const pat = window.appState.patients.find(p => p.id === ord.patientId);
+            const receiptDiv = document.getElementById('printable-receipt');
+
+            receiptDiv.innerHTML = `
+                <div class="text-center border-b border-dashed border-slate-400 pb-3 mb-3">
+                    <h2 class="font-bold text-base text-slate-900 tracking-wider">CAMBRIDGE OPTICIANS</h2>
+                    <p class="text-[10px] text-slate-600">Main Optical Branch - Optical Job Card</p>
+                    <p class="text-[10px] font-mono mt-1">${ord.orderNum} | ${ord.date}</p>
+                </div>
+
+                <div class="text-xs space-y-1 mb-3">
+                    <div><strong>Patient:</strong> ${ord.patientName}</div>
+                    <div><strong>Phone:</strong> ${ord.patientPhone}</div>
+                </div>
+
+                ${pat && pat.rx ? `
+                <div class="border border-slate-300 p-2 text-[10px] font-mono rounded bg-slate-100 mb-3">
+                    <p class="font-bold border-b pb-1 mb-1">LAB RX SPECS:</p>
+                    <div>OD: ${pat.rx.od.sph} SPH / ${pat.rx.od.cyl} CYL x ${pat.rx.od.axis}°</div>
+                    <div>OS: ${pat.rx.os.sph} SPH / ${pat.rx.os.cyl} CYL x ${pat.rx.os.axis}°</div>
+                    <div>PD: ${pat.rx.pd} mm</div>
+                </div>
+                ` : ''}
+
+                <div class="border-t border-b border-dashed border-slate-400 py-2 my-2 text-xs space-y-1">
+                    ${ord.items.map(i => `<div class="flex justify-between"><span>${i.name}</span><span>Rs. ${i.price}</span></div>`).join('')}
+                    <div class="flex justify-between text-slate-600"><span>Fitting Charge:</span><span>Rs. ${ord.fittingFee}</span></div>
+                    <div class="flex justify-between text-slate-600"><span>Discount:</span><span>- Rs. ${ord.discount}</span></div>
+                </div>
+
+                <div class="text-xs space-y-1 font-bold">
+                    <div class="flex justify-between"><span>Net Total:</span><span>Rs. ${ord.net.toLocaleString()}</span></div>
+                    <div class="flex justify-between text-emerald-700"><span>Advance Deposit:</span><span>Rs. ${ord.deposit.toLocaleString()}</span></div>
+                    <div class="flex justify-between text-rose-700 border-t pt-1"><span>Balance Due:</span><span>Rs. ${ord.balance.toLocaleString()}</span></div>
+                </div>
+
+                <div class="text-center text-[10px] text-slate-500 border-t border-dashed border-slate-400 pt-3 mt-4">
+                    Thank you for choosing Cambridge Opticians!<br>Please present this receipt upon delivery.
+                </div>
+            `;
+
+            document.getElementById('modal-receipt').classList.remove('hidden');
+        };
+
+        // Modal Controls
+        window.openNewPatientModal = function() { document.getElementById('modal-patient').classList.remove('hidden'); };
+        window.openNewInventoryModal = function() { document.getElementById('modal-inventory').classList.remove('hidden'); };
+        window.openNewOrderModal = function() { switchTab('pos'); };
+        window.openNewOrderForPatient = function(patId) {
+            switchTab('pos');
+            setTimeout(() => {
+                document.getElementById('pos-patient-select').value = patId;
+                handlePOSPatientChange(patId);
+            }, 100);
+        };
+
+        window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); };
+
+        window.handleSavePatient = async function(e) {
+            e.preventDefault();
+            const patObj = {
+                mrn: `CAM-P-${Math.floor(1000 + Math.random() * 9000)}`,
+                name: document.getElementById('pat-name').value,
+                phone: document.getElementById('pat-phone').value,
+                age: document.getElementById('pat-age').value,
+                gender: document.getElementById('pat-gender').value,
+                medicalHistory: document.getElementById('pat-medical').value,
+                lastVisit: new Date().toISOString().split('T')[0],
+                rx: {
+                    od: {
+                        sph: document.getElementById('rx-od-sph').value || '0.00',
+                        cyl: document.getElementById('rx-od-cyl').value || '0.00',
+                        axis: document.getElementById('rx-od-axis').value || '0',
+                        add: document.getElementById('rx-od-add').value || '-'
+                    },
+                    os: {
+                        sph: document.getElementById('rx-os-sph').value || '0.00',
+                        cyl: document.getElementById('rx-os-cyl').value || '0.00',
+                        axis: document.getElementById('rx-os-axis').value || '0',
+                        add: document.getElementById('rx-os-add').value || '-'
+                    },
+                    pd: document.getElementById('rx-pd').value || '62',
+                    prism: document.getElementById('rx-prism').value || 'None',
+                    recommendations: document.getElementById('rx-recommendations').value || 'Standard Coating'
+                }
+            };
+
+            if (window.appState.db) {
+                try {
+                    const ref = await addDoc(collection(window.appState.db, "patients"), patObj);
+                    patObj.id = ref.id;
+                } catch (err) { patObj.id = 'pat-' + Date.now(); }
+            } else { patObj.id = 'pat-' + Date.now(); }
+
+            window.appState.patients.push(patObj);
+            closeModal('modal-patient');
+            alert('Patient EHR & Optical Refraction saved!');
+            renderPatientsTable();
+        };
+
+        window.handleSaveInventory = async function(e) {
+            e.preventDefault();
+            const invObj = {
+                type: document.getElementById('inv-item-type').value,
+                brand: document.getElementById('inv-brand').value,
+                model: document.getElementById('inv-model').value,
+                qty: parseInt(document.getElementById('inv-qty').value || 0),
+                cost: parseFloat(document.getElementById('inv-cost').value || 0),
+                price: parseFloat(document.getElementById('inv-price').value || 0)
+            };
+
+            if (window.appState.db) {
+                try {
+                    const ref = await addDoc(collection(window.appState.db, "inventory"), invObj);
+                    invObj.id = ref.id;
+                } catch (err) { invObj.id = 'inv-' + Date.now(); }
+            } else { invObj.id = 'inv-' + Date.now(); }
+
+            window.appState.inventory.push(invObj);
+            closeModal('modal-inventory');
+            alert('Stock Item saved!');
+            renderInventoryTable();
+        };
+    </script>
+</body>
+</html>
