@@ -1,0 +1,26 @@
+{
+  "name": "cambridge-opticians",
+  "version": "1.0.0",
+  "description": "Cambridge Opticians shop dashboard with PostgreSQL order storage",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianas423/Cambridge-Opticians.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ianas423/Cambridge-Opticians/issues"
+  },
+  "homepage": "https://github.com/ianas423/Cambridge-Opticians#readme",
+  "dependencies": {
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
+  }
+}

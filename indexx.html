@@ -830,22 +830,8 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-
         // Application State Container
         window.appState = {
-            db: null,
             patients: [],
             inventory: [],
             orders: [],
@@ -853,46 +839,26 @@
             activeSubtab: 'frames'
         };
 
-        // Initialize App & Try Firebase Connection
+        // Initialize App & Load Orders From PostgreSQL (via Express API)
         window.addEventListener('DOMContentLoaded', async () => {
-            try {
-                const app = initializeApp(firebaseConfig);
-                window.appState.db = getFirestore(app);
-                
-                const badge = document.getElementById('firebase-status-badge');
-                badge.innerHTML = '<i class="fa-solid fa-wifi text-[8px]"></i> Firebase Online';
-                badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1';
-                
-                await loadAllDataFromFirebase();
-            } catch (e) {
-                console.warn("Firebase not configured or offline. Operating on Local Memory Cache with seed data.", e);
-                seedDefaultLocalState();
-            }
-
+            seedDefaultLocalState();
+            await loadOrdersFromDatabase();
             renderCurrentTab();
         });
 
-        // Load Firestore Collections
-        async function loadAllDataFromFirebase() {
-            if (!window.appState.db) return;
+        async function loadOrdersFromDatabase() {
+            const badge = document.getElementById('firebase-status-badge');
             try {
-                const patSnap = await getDocs(collection(window.appState.db, "patients"));
-                window.appState.patients = patSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-                const invSnap = await getDocs(collection(window.appState.db, "inventory"));
-                window.appState.inventory = invSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-                const ordSnap = await getDocs(collection(window.appState.db, "orders"));
-                window.appState.orders = ordSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-                if (window.appState.patients.length === 0) {
-                    seedDefaultLocalState();
-                } else {
-                    renderCurrentTab();
-                }
-            } catch (err) {
-                console.error("Error fetching Firestore collections:", err);
-                seedDefaultLocalState();
+                const res = await fetch('/api/orders');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                window.appState.orders = await res.json();
+                badge.innerHTML = '<i class="fa-solid fa-database text-[8px]"></i> PostgreSQL Online';
+                badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1';
+            } catch (e) {
+                console.warn('Could not load orders from PostgreSQL. Is the server running? (node server.js)', e);
+                window.appState.orders = [];
+                badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-[8px]"></i> Database Offline';
+                badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1';
             }
         }
 
@@ -940,35 +906,13 @@
                 { id: 'inv-5', type: 'contact', brand: 'Acuvue Oasys', model: 'Bi-Weekly Spherical (BC 8.4)', qty: 18, cost: 2200, price: 4200, category: 'Contact Lenses' }
             ];
 
-            window.appState.orders = [
-                {
-                    id: 'ord-5001',
-                    orderNum: 'ORD-2026-8801',
-                    patientId: 'pat-101',
-                    patientName: 'Muhammad Tariq',
-                    patientPhone: '0300-5551234',
-                    items: [
-                        { name: 'RayBan RB-5154 Clubmaster', price: 9500, qty: 1 },
-                        { name: 'Essilor Crizal 1.56 Anti-Glare Lens', price: 2800, qty: 1 }
-                    ],
-                    fittingFee: 500,
-                    gross: 12800,
-                    discount: 800,
-                    net: 12000,
-                    deposit: 5000,
-                    balance: 7000,
-                    paymentMode: 'Cash',
-                    labStatus: 'glazing', // placed, lab, glazing, qc, ready, delivered
-                    date: '2026-10-11'
-                }
-            ];
-
+            // Orders are never seeded — they live in PostgreSQL and load via the API.
             renderCurrentTab();
         }
 
         window.seedDatabaseWithSampleData = function() {
             seedDefaultLocalState();
-            alert("Sample dataset loaded successfully into memory!");
+            alert("Sample patients & inventory loaded locally. Orders are stored in PostgreSQL — place one from the POS screen.");
         };
 
         // Navigation Switcher
@@ -1030,6 +974,20 @@
 
             document.getElementById('lab-pending-badge').innerText = activeLabCount;
         }
+
+        const LAB_STATUS_META = {
+            placed: ['bg-slate-100 text-slate-700 border-slate-300', 'Placed'],
+            lab: ['bg-amber-100 text-amber-800 border-amber-300', 'In Lab'],
+            glazing: ['bg-blue-100 text-blue-800 border-blue-300', 'Glazing'],
+            qc: ['bg-indigo-100 text-indigo-800 border-indigo-300', 'QC Passed'],
+            ready: ['bg-emerald-100 text-emerald-800 border-emerald-300', 'Ready for Pickup'],
+            delivered: ['bg-emerald-600 text-white border-emerald-700', 'COMPLETED']
+        };
+
+        window.getLabBadgeHtml = function(status) {
+            const [cls, label] = LAB_STATUS_META[status] || LAB_STATUS_META.placed;
+            return `<span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border ${cls}">${label}</span>`;
+        };
 
         function renderDashboardView() {
             // Recent Orders Table
@@ -1186,7 +1144,7 @@
                 itemSelect.innerHTML += `<option value="${i.id}">${i.brand} - ${i.model} (Rs. ${i.price}) [Stock: ${i.qty}]</option>`;
             });
 
-            document.getElementById('pos-order-num-display').innerText = `ORD-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+            document.getElementById('pos-order-num-display').innerText = 'Auto-assigned on save';
             renderPosCart();
         }
 
@@ -1317,22 +1275,27 @@
                 date: new Date().toISOString().split('T')[0]
             };
 
-            if (window.appState.db) {
-                try {
-                    const docRef = await addDoc(collection(window.appState.db, "orders"), orderObj);
-                    orderObj.id = docRef.id;
-                } catch (e) {
-                    orderObj.id = 'ord-' + Date.now();
+            let savedOrder;
+            try {
+                const res = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderObj)
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || `HTTP ${res.status}`);
                 }
-            } else {
-                orderObj.id = 'ord-' + Date.now();
+                savedOrder = await res.json();
+            } catch (e) {
+                return alert(`Order was NOT saved — database error: ${e.message}\n\nMake sure the server is running: node server.js`);
             }
 
-            window.appState.orders.push(orderObj);
+            window.appState.orders.push(savedOrder);
             window.appState.posCart = [];
-            
-            alert('Order submitted successfully and routed to Optical Lab Pipeline!');
-            printOrderReceipt(orderObj.id);
+
+            alert(`Order ${savedOrder.orderNum} saved to the database and routed to Optical Lab Pipeline!`);
+            printOrderReceipt(savedOrder.id);
             switchTab('lab');
         };
 
@@ -1365,9 +1328,11 @@
                     <div class="text-[11px] text-slate-500 truncate">${ord.items.map(i => i.name).join(', ')}</div>
                     <div class="pt-1 border-t border-slate-100 flex items-center justify-between text-[11px]">
                         <span class="font-bold text-slate-900">Bal: Rs. ${ord.balance}</span>
-                        <button onclick="advanceOrderStatus('${ord.id}', '${st}')" class="bg-slate-900 text-white px-2 py-0.5 rounded hover:bg-sky-600 transition">
+                        ${st === 'delivered'
+                            ? '<span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full">COMPLETED</span>'
+                            : `<button onclick="advanceOrderStatus('${ord.id}', '${st}')" class="bg-slate-900 text-white px-2 py-0.5 rounded hover:bg-sky-600 transition">
                             Next &rarr;
-                        </button>
+                        </button>`}
                     </div>
                 `;
 
@@ -1391,17 +1356,31 @@
 
             ord.labStatus = nextStatus;
 
-            if (window.appState.db && ord.id) {
-                try {
-                    await updateDoc(doc(window.appState.db, "orders", ord.id), { labStatus: nextStatus });
-                } catch (e) { console.error("Error updating status in Firebase", e); }
+            try {
+                const res = await fetch(`/api/orders/${ord.id}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ labStatus: nextStatus })
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || `HTTP ${res.status}`);
+                }
+            } catch (e) {
+                ord.labStatus = currentStatus;
+                renderKanbanBoard();
+                return alert(`Could not save status to the database: ${e.message}`);
             }
 
             if (nextStatus === 'ready') {
                 triggerSMSAlert(ord);
             }
+            if (nextStatus === 'delivered') {
+                alert(`Order ${ord.orderNum} for ${ord.patientName} is now COMPLETED.`);
+            }
 
             renderKanbanBoard();
+            updateDashboardMetrics();
         };
 
         function triggerSMSAlert(ord) {
@@ -1551,12 +1530,7 @@
                 }
             };
 
-            if (window.appState.db) {
-                try {
-                    const ref = await addDoc(collection(window.appState.db, "patients"), patObj);
-                    patObj.id = ref.id;
-                } catch (err) { patObj.id = 'pat-' + Date.now(); }
-            } else { patObj.id = 'pat-' + Date.now(); }
+            patObj.id = 'pat-' + Date.now();
 
             window.appState.patients.push(patObj);
             closeModal('modal-patient');
@@ -1575,12 +1549,7 @@
                 price: parseFloat(document.getElementById('inv-price').value || 0)
             };
 
-            if (window.appState.db) {
-                try {
-                    const ref = await addDoc(collection(window.appState.db, "inventory"), invObj);
-                    invObj.id = ref.id;
-                } catch (err) { invObj.id = 'inv-' + Date.now(); }
-            } else { invObj.id = 'inv-' + Date.now(); }
+            invObj.id = 'inv-' + Date.now();
 
             window.appState.inventory.push(invObj);
             closeModal('modal-inventory');
